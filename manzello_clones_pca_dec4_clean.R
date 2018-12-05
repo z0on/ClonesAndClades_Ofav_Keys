@@ -1,0 +1,71 @@
+library(WGCNA) # for coloring clonal groups
+library(sparcl) # for ColorDendrogram
+
+# setwd('~/Dropbox/Documents/manzello/angsd')
+ll=load('manzello_metadata_dec4.RData')
+
+# reading IBS matrix based on SNPs with allele frequency >= 0.05:
+ma = as.matrix(read.table("ibs05.ibsMat"))
+samples=meta$Tag.Number
+dimnames(ma)=list(samples,samples)
+
+# plotting hierarchical clustering tree
+hc=hclust(as.dist(ma),"ave")
+plot(hc,cex=0.6)
+
+# clustering faveolata-only samples
+mafa=ma[meta$faveolata,meta$faveolata]
+bamfa=bams[meta$faveolata]
+hc=hclust(as.dist(mafa),"ave")
+plot(hc,cex=0.6)
+
+# "artificial clones" : genotyping replicates
+cl1=c("73.GACT","73.TCAC","73.TGTC")
+cl2=c("83.GACT","83.TCAC","83.TGTC")
+cl3=c("88.GACT","88.TCAC","88.TGTC")
+cl4=c("91.GACT","91.TCAC","91.TGTC")
+cl5=c("79.GACT","79.TCAC","79.TGTC")
+# color artificial clones red
+art.clones=rep("black",nrow(mafa))
+art.clones[bamfa %in% c(cl1,cl2,cl3,cl4)]="red"
+ColorDendrogram(hclust(as.dist(mafa),"ave"), y = art.clones,branchlength=0.05)
+
+# cutoff for defining clones
+abline(h=0.18,col="red",lty=3)
+
+# sorting samples into clonal groups; all singletons go into the same group
+cc=cutree(hc,h=0.18)
+tc=table(cc)
+singletons=as.numeric(names(tc)[tc==1])
+cc[cc %in% singletons]= singletons[1]
+library(WGCNA) # just for coloring
+clones=labels2colors(as.numeric(as.factor(as.numeric(cc))))
+# changing some colors manually for better visibility
+clones[clones=="white"]="khaki3"
+clones[clones=="black"]="goldenrod"
+clones[clones=="brown"]="black"
+ColorDendrogram(hclust(as.dist(mafa),"ave"), y = clones, labels = F,branchlength=0.05)
+
+# selecting one coral per clone
+sel=c()
+for (i in unique(clones)) {
+	if (i=="black") { 
+		sel=append(sel,subset(bamfa,clones==i)) 
+	} else {
+		sel=append(sel,sample(subset(bamfa,clones==i),1))
+	}
+}
+sel=bamfa %in% sel
+table(sel)
+
+# is there population structure, after clones have been removed?
+
+hc=hclust(as.dist(mafa[sel, sel]),"ave")
+plot(hc,cex=0.01)
+
+library(pheatmap)
+pheatmap(mafa[sel,sel]) # no visible clustering
+
+meta=meta[meta$faveolata,]
+save(bamfa,meta,mafa,sel,file='manzello_angsd_dec4.RData')
+
