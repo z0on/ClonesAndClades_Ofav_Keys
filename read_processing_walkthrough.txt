@@ -1,0 +1,551 @@
+Bams and genome reference is here:
+
+#-----------
+
+From Prada:
+
+Misha- You can get the updated annotated genome here:
+
+https://www.ncbi.nlm.nih.gov/Traces/wgs/?val=MZGG01#contigs
+ftp://ftp.ncbi.nlm.nih.gov/sra/wgs_aux/MZ/GG/MZGG01/MZGG01.1.fsa_nt.gz
+
+If you need the annotation see:
+https://www.ncbi.nlm.nih.gov/genome/annotation_euk/Orbicella_faveolata/100/
+ 
+You can download the annotation from:
+ftp://ftp.ncbi.nih.gov/genomes/Orbicella_faveolata
+(see the GFF directory in particular)
+ 
+You can view individual genes in the Gene resource. Here is the list of genes:
+https://www.ncbi.nlm.nih.gov/gene/?term=txid48498[Organism:noexp]
+ 
+And Blast against it with this page:
+https://www.ncbi.nlm.nih.gov/genome/seq/BlastGen/BlastGen.cgi?taxid=48498
+ 
+I hope it helps and feel free to contact me if you need further info. Use the Current Biology to cite it, we are currently doing another paper but still not fully done.
+
+Best,
+Carlos
+
+
+Carlos Prada
+Smithsonian Tropical Research Institute Tupper Fellow
+9100 Panama City PL
+Washington, DC 20521
+[P](+1) 202-633-4700 ext 28833
+pradac@si.edu
+http://www.carlosprada.org
+#----------------------------
+#### replace my email matz@utexas.edu with yours throughout the text!
+
+# making launcher_creator.py work:
+nano ~/.bashrc
+
+# section 1: add this line
+module load python
+# section 2:
+export PATH=/corral-repl/utexas/BioITeam/bin:$PATH
+# save and exit
+mv ~/bin/launcher_creator.py ~/bin/launcher_creator.p
+
+# re-login, try running launcher_creator.py
+
+#--------------
+# Orbicella faveolata population genomics project:
+#location of zipped files: cmonstr@ranch.tacc.utexas.edu:~/manzello2016/
+#password - ask Misha
+
+# multi-file un-packing (gz: gzip, tgz: tar)
+ls *.gz | perl -pe 's/(\S+)/gunzip $1/' >gunz
+ls *.tgz | perl -pe 's/(\S+)/tar vxf $1/' >tars
+launcher_creator.py -j tars -n tars -t 0:30:00 -a mega2014 -e matz@utexas.edu -q normal 
+launcher_creator.py -j gunz -n gunz -t 0:30:00 -a mega2014 -e matz@utexas.edu -q normal 
+sbatch tars.slurm
+sbatch gunz.slurm
+
+
+echo "ngs_concat.pl FLK 'FLK-(\d+)_'" >cc
+launcher_creator.py -j cc -n cc -t 0:30:00 -a mega2014 -e matz@utexas.edu 
+sbatch cc.slurm
+
+
+# When trimming reads, use 2bRAD_trim_launch_dedup.pl instead of 2bRAD_trim_launch.pl
+# also, note additional argument adaptor="AGATC?" - this takes care of the fact that L0001 reads are 1-base truncated
+# (AGATC? in perl speak mean it could be AGATC or AGAT)
+2bRAD_trim_launch_dedup.pl fq sampleID=1 adaptor="AGATC?"> trims
+launcher_creator.py -j trims -n trims -t 0:30:00 -w 12 -a mega2014 -e matz@utexas.edu
+sbatch trims.slurm
+
+# quality filtering using fastx_toolkit
+module load fastx_toolkit
+ls *.tr0 | perl -pe 's/^(\S+)\.tr0$/cat $1\.tr0 \| fastq_quality_filter -q 20 -p 90 >$1\.trim/' >filt0
+launcher_creator.py -j filt0 -n filt0 -t 0:15:00 -a mega2014 -e matz@utexas.edu
+sbatch filt0.slurm
+
+#-------------------
+
+Symbiodinium genomes:
+
+S. microadriaticum (clade A, from http://reefgenomics.org/): http://smic.reefgenomics.org/download/Smic.genome.scaffold.final.fa.gz
+
+S. minutum (clade B, from https://doi.org/10.1016/j.cub.2013.05.062): ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/507/305/GCA_000507305.1_ASM50730v1/GCA_000507305.1_ASM50730v1_genomic.fna.gz 
+
+S. goreau (clade C1, from doi: https://doi.org/10.1101/198762):  https://cloudstor.aarnet.edu.au/plus/s/6yziMf2ygWjGu0L/download?path=%2F&files=SymbC1.Genome.Scaffolds.fasta.gz  
+
+S.trenchii (clade D, draft genome from Katherine Dougan / M. Rodriguez-Lanetty, katherine.e.dougan@gmail.com): gdown.pl 'https://drive.google.com/a/utexas.edu/uc?export=download&confirm=wmUY&id=1WIaXi2qH80UwXVCzHF2_NfFHXWA42wIi' strenchii_cladeD_genome.fasta
+(get gdown.pl script from https://gitlab.com/Nanolx/patchimage/raw/master/tools/gdown.pl for google drive download)
+
+concatenated into single chromosome each A,B,C,D = chr11,chr12,chr13,chr14
+appended to ofav_prada.fasta > ofavPrada_symABCD.fasta
+
+#-------------------
+
+# setting up Orbicella faveolata genome
+# in your $WORK/db
+
+wget https://www.dropbox.com/s/cnsrsvups5dgmil/Ofav.finalGt500.fa.bz2
+mv file Ofav.finalGt1000.fa.bz2
+bzip2 -d Ofav.finalGt1000.fa.bz2
+rm *.bz2
+
+# concatenating contigs into 10 "pseudo-chromosomes" (to help memory usage in GATK)
+concatFasta.pl fasta=Ofav.finalGt1000.fa
+
+# setting up  shortcuts to genome files for ease of coding (needs to be done upon every new login!) 
+export GENOME_FASTA=ofavPrada_symABCD.fasta  
+export GENOME_DICT=ofavPrada_symABCD.dict 
+export GENOME_PATH=$WORK/db/
+export GENOME_REF=$WORK/db/ofavPrada_symABCD.fasta
+
+module load perl
+module load bowtie
+
+# creating genome indexes (for bowtie2, samtools, and picard):
+cd $GENOME_PATH
+echo 'bowtie2-build $GENOME_FASTA $GENOME_FASTA' >btb
+launcher_creator.py -j btb -n btb -t 0:30:00 -a tagmap -e matz@utexas.edu
+sbatch btb.slurm
+
+module load samtools
+samtools faidx $GENOME_FASTA
+
+module load picard-tools
+java -jar $TACC_PICARD_DIR/picard.jar CreateSequenceDictionary R=$GENOME_FASTA  O=$GENOME_DICT
+
+#-------------------
+# mapping reads to genome using bowtie2 and reformatting results into bam files
+
+# mapping to ofav with zoox
+
+module load perl
+module load bowtie
+export GENOME_REF=$WORK/db/ofavPrada_symABCD.fasta
+2bRAD_bowtie2_launch.pl '\.trim$' $GENOME_REF > bt2
+launcher_creator.py -j bt2 -n maps -t 4:00:00 -w 12 -q normal -a mega2014 -e matz@utexas.edu
+sbatch maps.slurm
+
+
+cat maps.e* # what is overall alignment rate?
+
+ls *.bt2.sam > sams
+cat sams | wc -l  
+# do you have sams for all your samples?... 
+
+
+# making bam files
+export GENOME_REF=$WORK/db/ofavPrada_symABCD.fasta
+module load samtools
+module load picard-tools
+
+cat sams | perl -pe 's/(\S+)\.sam/samtools import \$GENOME_REF $1\.sam $1\.unsorted\.bam && samtools sort -o $1\.sorted\.bam $1\.unsorted\.bam && samtools index $1\.sorted.bam $1\.bam.bai && mv $1\.sorted.bam $1\.bam/' >s2b
+launcher_creator.py -j s2b -n s2b -q normal -t 1:00:00 -a tagmap -e matz@utexas.edu -w 12
+sbatch s2b.slurm
+
+rm *sorted*
+ls *bt2.bam > bams
+cat bams | wc -l  
+# do you have bams for all your samples?... If not, rerun the chunk above
+
+#------------------
+extracting cladeD reads (mapping quality at least 20), doing tag sharing on them
+
+for S in `ls *trim.bt2.sam`;
+do
+FANAME=`echo $S | perl -pe 's/\.trim\.bt2\.sam/\.D\.fas/'`;
+echo $FANAME;
+cat $S | awk '$3=="chr14" && $5>19' | awk '{print ">"$1"\n"$10}' > $FANAME
+done
+
+idev -tpn 48 -N 1
+module load jellyfish
+for F in `ls *.D.fas`; do
+echo $F;
+jellyfish count -m 36 -s 100M -t 48 -C $F -o $F.jf && jellyfish dump $F.jf > $F.kmers;
+done
+
+for F in `ls *.kmers`; do
+NEW=`echo $F | perl -pe "s/\.fq_/$1_/"`;
+mv $F $NEW;
+done
+
+ls *.kmers > kmerfiles
+mergeKmers.pl kmerfiles minDP=2 minInd=2 maxInd=100 >2to100k.uniq
+
+#------------------
+# Relatedness using ANGSD and ngsRelate
+
+# install ngsrelate
+git clone https://github.com/ANGSD/NgsRelate.git
+cd NgsRelate/
+g++ ngsRelate.cpp -O3 -lz -o ngsRelate
+mv ngsRelate ~/bin/
+
+cd /scratch/01211/cmonstr/manzello/bams_local
+
+ls *bt2.bam > bams
+
+# manually remove franksi bams from the list (nano bams, remove these):
+79.GACT
+82.GCTT
+83.CATC
+85.AGTG
+87.GTGA
+88.GTGA
+89.CTAC
+91.CATC
+91.GTGA
+cp bams bams_noFrank
+cat bams_noFrank | wc -l
+# 193
+
+
+### First we generate a file with allele frequencies (angsdput.mafs.gz) and a file with genotype likelihoods (angsdput.glf.gz).
+# setting minind (min number of individual in which the site is genotyped) to 173, 
+# corresponding to approx 90% of non-franksi individuals 
+# -P 40 : 40 threads
+# minMapQ 20 : only consider reads mapping uniquely with 99% certainty
+# GL 1 : samtools model of genotype likelihoods
+# doGLF 2 : genotype likelihoods are written in beagle format
+# doMajorMinor 1: major and minor alleles inferred from genotype likelihoods
+echo 'angsd -b bams_noFrank -GL 1 -doMajorMinor 1 -snp_pval 1e-6 -doMaf 1 -minMapQ 20 -minInd 173 -doGlf 2 -P 40'>an
+launcher_creator.py -j an -n an -t 1:00:00 -a tagmap -q normal -e matz@utexas.edu 
+sbatch an.slurm
+
+#	[ALL done] cpu-time used =  624.11 sec
+#	[ALL done] walltime used =  284.00 sec
+
+### Then we extract the frequency column from the allele frequency file and remove the header (to make it in the format NgsRelate needs)
+zcat angsdput.mafs.gz | cut -f5 |sed 1d >freq
+cat freq | wc -l
+# 31816  that many SNPs pass filters
+
+echo 'ngsRelate -g angsdput.glf.gz -n 193 -f freq >gl.res' >relate
+launcher_creator.py -j relate -n relate -t 2:00:00 -a tagmap -e matz@utexas.edu 
+sbatch relate.slurm
+
+#----------------------
+# angsd: generating data for PCA and NJ trees
+# calculating SNP identity-by-state (IBS) distance and covariance matrix
+# based on sampling of a single read per individual
+
+# for zoox clade D:
+
+FILTERS="-uniqueOnly 1 -remove_bads 1 -minMapQ 20 -minQ 20 -snp_pval 1e-1 -minInd 2 -dosnpstat 1 -doHWE 1 -hwe_pval 1e-5 -sb_pval 1e-5"
+DOS="-doMajorMinor 1 -doMaf 1 -doCounts 1 -makeMatrix 1 -doIBS 1"
+angsd -b bams -r chr14 -GL 1 $FILTERS $DOS -P 1 -out cladeDall
+FILTERS="-uniqueOnly 1 -remove_bads 1 -minMapQ 20 -minQ 20 -snp_pval 1e-1 -minInd 5 -dosnpstat 1 -doHWE 1 -hwe_pval 1e-5 -sb_pval 1e-5"
+DOS="-doMajorMinor 1 -doMaf 1 -doCounts 1 -makeMatrix 1 -doIBS 1"
+angsd -b bams -r chr14 -GL 1 $FILTERS $DOS -P 1 -out cladeDall5
+FILTERS="-uniqueOnly 1 -remove_bads 1 -minMapQ 20 -minQ 20 -snp_pval 1e-1 -minInd 10 -dosnpstat 1 -doHWE 1 -hwe_pval 1e-5 -sb_pval 1e-5"
+DOS="-doMajorMinor 1 -doMaf 1 -doCounts 1 -makeMatrix 1 -doIBS 1 "
+angsd -b bams -r chr14 -GL 1 $FILTERS $DOS -P 1 -out cladeDall10
+FILTERS="-uniqueOnly 1 -remove_bads 1 -minMapQ 20 -minQ 20 -snp_pval 1e-5 -minInd 150 -dosnpstat 1 -doHWE 1 -hwe_pval 1e-5 -sb_pval 1e-5"
+DOS="-doMajorMinor 1 -doMaf 1 -doCounts 1 -makeMatrix 1 -doIBS 1"
+angsd -b bams -r MZGG01000012.1 -GL 1 $FILTERS $DOS -P 1 -out mz12_100
+
+ls *bt2.bam > bams
+
+echo 'angsd -b bams -GL 1 -doMajorMinor 1 -doCov 1 -minMapQ 20 -minInd 173 -doIBS 1 -doCounts 1 -makeMatrix 1 -minFreq 0.005 -out ibs -P 40'>an2
+launcher_creator.py -j an2 -n an2 -t 1:00:00 -a tagmap -e matz@utexas.edu 
+sbatch an2.slurm
+zcat ibs.ibs.gz | wc -l
+# 80768 SNPs
+
+echo 'angsd -b bams -GL 1 -doMajorMinor 1 -doCov 1 -minMapQ 20 -minInd 173 -doIBS 1 -doCounts 1 -makeMatrix 1 -minFreq 0.05 -out ibs05 -P 40'>an3
+launcher_creator.py -j an3 -n an3 -t 1:00:00 -a tagmap -e matz@utexas.edu 
+sbatch an3.slurm
+
+zcat ibs05.ibs.gz | wc -l
+# 14166 SNPs
+
+echo 'angsd -b bams -GL 1 -doMajorMinor 1 -doCov 1 -minMapQ 20 -doIBS 1 -doCounts 1 -makeMatrix 1 -minFreq 0.05 -out ibs05_nominind -P 40'>an4
+launcher_creator.py -j an4 -n an4 -t 1:00:00 -a tagmap -e matz@utexas.edu 
+sbatch an4.slurm
+zcat ibs05_nominind.ibs.gz | wc -l
+# 36384 SNPs
+
+# only for faveolata, one per clone
+echo 'angsd -b faveo.bams -GL 1 -doMajorMinor 1 -doCov 1 -minMapQ 20 -doIBS 1 -doCounts 1 -makeMatrix 1 -minFreq 0.05 -out faveo -P 40'>fa
+launcher_creator.py -j fa -n fa -t 1:00:00 -a tagmap -e matz@utexas.edu 
+sbatch fa.slurm
+zcat fa.ibs.gz | wc -l
+# 31812 SNPs
+
+
+#-----------------------
+# angsd - Admixture (for non-clonal faveolata)
+
+# installation
+cd ~/bin/
+wget popgen.dk/software/download/NGSadmix/ngsadmix32.cpp 
+g++ ngsadmix32.cpp -O3 -lpthread -lz -o NGSadmix
+cd -
+
+# making beagle likelihoods file filtering a lot (incl HWE and strand bias)
+echo 'angsd -b faveo.bams -GL 1 -doMajorMinor 1 -snp_pval 1e-6 -doMaf 1 -minMapQ 20 -minQ 20 -minInd 90 -dosnpstat 1 -hwe_pval 0.05 -sb_pval 0.05 -doGlf 2 -P 40 -minMaf 0.05 -out faveosfm'>an
+launcher_creator.py -j an -n an -t 0:30:00 -a tagmap -e matz@utexas.edu 
+sbatch an.slurm
+zcat faveosfm.beagle.gz | wc -l
+# 33485 without SNP filters
+# 21664 with SNP filters
+# 14317 with filters and maf>0.01
+#  6947 with filters and maf>0.05
+
+for K in 2 3 4 5 6; 
+do 
+NGSadmix -likes faveosfm.beagle.gz -K $K -P 10 -o fav05_k${K};
+done
+
+
+#--------------------------
+# Faveo, franksi SFS
+
+# making  SAF files (unfolded! will fold it later in moments)
+
+export GENOME_REF=$WORK/db/ofavPrada_symABCD.fasta
+#no snp pval filter, no clones, mapping and base quality at 30, minIndDepth 3: FOLDED sfs (remove -fold 1 if need unfolded)
+echo 'angsd -b faveo.bams -GL 1 -doMajorMinor 4 -ref $WORK/db/ofavPrada_symABCD.fasta -doMaf 2 -minMapQ 30 -minQ 30 -minInd 95 -minIndDepth 3 -dosnpstat 1 -doHWE 1 -hwe_pval 1e-5 -sb_pval 1e-5 -dogeno 3 -dopost 1 -hetbias_pval 1e-5 -doCov 1 -doIBS 1 -doSaf 1 -anc $WORK/db/ofavPrada_symABCD.fasta -fold 1 -doCounts 1 -makeMatrix 1 -doGlf 2 -doDepth 1 -P 40 -out faveo '>fav
+launcher_creator.py -j fav -n fav -t 2:00:00 -a tagmap -e matz@utexas.edu -q normal
+sbatch fav.slurm
+
+echo 'angsd -b franksi.bams -GL 1 -doMajorMinor 4 -ref $WORK/db/ofavPrada_symABCD.fasta -doMaf 2 -minMapQ 30 -minQ 30 -minInd 8 -minIndDepth 3 -dosnpstat 1 -doHWE 1 -hwe_pval 1e-5 -sb_pval 1e-5 -dogeno 3 -dopost 1 -hetbias_pval 1e-5 -doCov 1 -doIBS 1 -doSaf 1 -anc $WORK/db/ofavPrada_symABCD.fasta -fold 1 -doCounts 1 -makeMatrix 1 -doGlf 2 -doDepth 1 -P 40 -out franksi '>fra
+launcher_creator.py -j fra -n fra -t 2:00:00 -a tagmap -e matz@utexas.edu -q normal
+sbatch fra.slurm
+
+zcat faveo.mafs.gz | wc -l
+# 798896
+zcat franksi.mafs.gz | wc -l
+# 869678
+
+# if you want 2dSFS, generate unfolded and then fold it if needed in dadi/moments. 
+# dadi/moments will not read folded sfs generated by ANGSD
+realSFS franksi.saf.idx faveo.saf.idx -P 20 >frank_faveo.sfs
+realSFS faveo.saf.idx -P 20 >faveo.sfs
+# 798879 sites
+realSFS franksi.saf.idx -P 20 >frank.sfs
+
+# add header to frank_faveo.sfs: [2*pop2size+1] [2*pop1size+1] unfolded
+21 215 unfolded 
+
+#----------------------
+# stairway plots
+
+cd $WORK/stairway_plot_v2beta/
+nano faveo.fold.blueprint
+
+#example blueprint file
+#input setting
+popid: faveo # id of the population (no white space)
+nseq: 214 # number of sequences
+L: 798879 # total number of observed nucleic sites, including polymorphic and monomorphic
+whether_folded: true # whethr the SFS is folded (true or false)
+SFS: 5085.640135 2123.910569 1313.603473 899.346119 699.669619 539.349293 422.571636 379.276310 293.436720 304.247844 257.189602 222.543029 231.123504 203.304211 156.454269 154.332432 153.566672 161.823341 137.600616 120.907209 117.767740 121.381743 125.986912 101.996544 124.231991 87.307560 82.339777 69.309900 117.816430 92.718770 66.457170 71.376225 87.229792 63.374964 66.083500 49.405155 65.909135 55.646410 46.535042 55.743843 69.408918 47.577456 59.317876 27.811323 47.587297 83.276198 40.033729 50.318252 49.455191 47.452226 45.407652 61.001150 29.856799 37.998040 31.110979 46.445760 29.166621 31.421866 26.195613 48.322063 42.237153 55.816483 49.829931 40.960457 41.169164 37.297260 39.114598 10.482666 46.725700 30.209093 30.154368 38.860155 44.181997 36.855612 14.544560 36.764557 42.002429 38.051701 40.166167 56.094364 6.524570 52.228196 14.465381 53.942758 11.031832 19.766847 34.282079 51.972178 17.276370 32.654962 26.414391 29.341449 36.135694 0.582030 61.211580 28.382407 25.495045 44.881153 40.390962 24.575150 40.882161 36.738261 20.609944 43.586873 24.230601 46.718027 62.538098
+#smallest_size_of_SFS_bin_used_for_estimation: 1 # default is 1; to ignore singletons, change this number to 2
+#largest_size_of_SFS_bin_used_for_estimation: 49 # default is n-1; to ignore singletons, change this number to nseq-2
+pct_training: 0.67 # percentage of sites for training
+nrand: 50 100 150 200 # number of random break points for each try (separated by white space)roughly (nseq-2)/4, (nseq-2)/2, (nseq-2)*3/4, nseq-2
+project_dir: FaveoFold # project directory
+stairway_plot_dir: stairway_plot_es # directory to the stairway plot files
+ninput: 200 # number of input files to be created for each estimation
+#output setting
+mu: 1e-8 # assumed mutation rate per site per generation
+year_per_generation: 5 # assumed generation time (in years)
+#plot setting
+plot_title: FaveoFold # title of the plot
+xrange: 0.1,10000 # Time (1k year) range; format: xmin,xmax; "0,0" for default
+yrange: 0,0 # Ne (1k individual) range; format: xmin,xmax; "0,0" for default
+xspacing: 2 # X axis spacing
+yspacing: 2 # Y axis spacing
+fontsize: 12 # Font size
+
+java -cp stairway_plot_es Stairbuilder faveo.fold.blueprint 
+grep swarmops faveo.fold.blueprint.sh > addTheta
+launcher_creator.py -j addTheta -n at -e matz@utexas.edu -a tagmap -t 2:00:00 -q normal
+nano at.slurm
+#SBATCH -N 18
+sbatch at.slurm
+grep -v swarmops faveo.fold.blueprint.sh >movesPlots
+bash movesPlots
+scp cmonstr@ls5.tacc.utexas.edu:/work/01211/cmonstr/lonestar/stairway_plot_v2beta/FaveoFold/*final* .
+
+nano franksi.blueprint
+
+popid: frank # id of the population (no white space)
+nseq: 20 # number of sequences
+L: 869677 # total number of observed nucleic sites, including polymorphic and monomorphic
+whether_folded: false # whethr the SFS is folded (true or false)
+SFS: 4732.052059 1601.981627 966.682321 691.098834 489.981161 388.625459 328.381998 293.748301 247.876927 290.145915 171.529619 180.649052 140.519862 144.598543 141.488859 107.715625 150.397699 122.881978 232.557629
+#smallest_size_of_SFS_bin_used_for_estimation: 1 # default is 1; to ignore singletons, change this number to 2
+#largest_size_of_SFS_bin_used_for_estimation: 49 # default is n-1; to ignore singletons, change this number to nseq-2
+pct_training: 0.67 # percentage of sites for training
+nrand: 5 10 15 18 # number of random break points for each try (separated by white space)roughly (nseq-2)/4, (nseq-2)/2, (nseq-2)*3/4, nseq-2
+project_dir: Franksi # project directory
+stairway_plot_dir: stairway_plot_es # directory to the stairway plot files
+ninput: 200 # number of input files to be created for each estimation
+#output setting
+mu: 1e-8 # assumed mutation rate per site per generation
+year_per_generation: 5 # assumed generation time (in years)
+#plot setting
+plot_title: Franksi # title of the plot
+xrange: 0.1,10000 # Time (1k year) range; format: xmin,xmax; "0,0" for default
+yrange: 0,0 # Ne (1k individual) range; format: xmin,xmax; "0,0" for default
+xspacing: 2 # X axis spacing
+yspacing: 2 # Y axis spacing
+fontsize: 12 # Font size
+
+
+java -cp stairway_plot_es Stairbuilder franksi.blueprint 
+grep swarmops franksi.blueprint.sh > addTheta
+launcher_creator.py -j addTheta -n at -e matz@utexas.edu -a tagmap -t 0:10:00 -q normal
+nano at.slurm
+#SBATCH -N 18
+sbatch at.slurm
+grep -v swarmops franksi.blueprint.sh >movesPlots
+bash movesPlots
+
+#-------------------
+
+python IM2_fold_angsd.py 2dsfs_frank_faveo_prepped.sfs 1 1 1 1 1 1 1 &
+python S2M_fold_angsd.py 2dsfs_frank_faveo_prepped.sfs 1 1 1 1 1 &
+
+
+python gj2_moments_fold_angsd.py faveo.sfs 1 1 1 1 1 1
+gj2_ 66509 _ faveo.sfs  ll:  -1051.97420257  p:  [ 0.796  0.88   0.017  1.478  0.446  7.371]  t:  6216.53521422
+gj2_ 897439 _ faveo.sfs  ll:  -953.088214456  p:  [ 3.866  1.212  0.198  1.318  2.196  0.769]  t:  7782.03977658
+gj2_ 103398 _ faveo.sfs  ll:  -953.10065467  p:  [ 0.613  5.229  0.463  1.853  0.496  0.762]  t:  5552.24202379
+
+
+S2M:
+s2mfRes 341868 2dsfs_frank_faveo_prepped.sfs 1 1  ll:  -11517.2665934  p:  [ 0.916  0.588  2.174  0.855  1.283]  t:  5467.2619331
+s2mfRes 610488 2dsfs_frank_faveo_prepped.sfs 1 1  ll:  -10155.8311379  p:  [ 1.509  1.247  1.811  0.695  0.546]  t:  3642.46865349
+s2mfRes 997619 2dsfs_frank_faveo_prepped.sfs 1 1  ll:  -10136.5573791  p:  [ 1.542  1.218  1.457  0.618  0.577]  t:  3746.74273019
+s2mfRes 241490 2dsfs_frank_faveo_prepped.sfs 1 1  ll:  -10197.7201821  p:  [ 1.597  1.376  2.456  0.701  0.484]  t:  3279.43057147
+s2mfRes 407796 2dsfs_frank_faveo_prepped.sfs 1 1  ll:  -10193.7733548  p:  [ 1.541  1.323  2.271  0.724  0.503]  t:  3419.91160196
+s2mfRes 812461 2dsfs_frank_faveo_prepped.sfs 1 1  ll:  -10348.9129437  p:  [ 2.088  1.365  1.85   0.533  0.416]  t:  3290.76590981
+s2mfRes 880159 2dsfs_frank_faveo_prepped.sfs 1 1  ll:  -10932.778841  p:  [ 0.815  0.627  0.863  0.779  0.787]  t:  5851.533679
+s2mfRes 533018 2dsfs_frank_faveo_prepped.sfs 1 1  ll:  -10267.7891344  p:  [ 2.514  2.006  5.471  0.401  0.376]  t:  2134.34416673
+s2mfRes 790533 2dsfs_frank_faveo_prepped.sfs 1 1  ll:  -10198.5947501  p:  [ 1.617  1.407  2.587  0.694  0.47 ]  t:  3232.96721386
+s2mfRes 99495 2dsfs_frank_faveo_prepped.sfs 1 1  ll:  -12200.1409368  p:  [  5.876   4.248  43.032   0.12    0.239]  t:  760.575905239
+s2mfRes 249960 2dsfs_frank_faveo_prepped.sfs 1 1  ll:  -10136.5574376  p:  [ 1.542  1.218  1.48   0.618  0.578]  t:  3746.95484672
+s2mfRes 321080 2dsfs_frank_faveo_prepped.sfs 1 1  ll:  -10263.401114  p:  [ 2.08   1.849  4.547  0.552  0.356]  t:  2412.32699298
+s2mfRes 564403 2dsfs_frank_faveo_prepped.sfs 1 1  ll:  -10180.1237537  p:  [ 1.306  0.953  1.123  0.679  0.712]  t:  4522.51787439
+s2mfRes 751240 2dsfs_frank_faveo_prepped.sfs 1 1  ll:  -10508.4169245  p:  [  9.584   7.294  31.461   0.101   0.114]  t:  548.49419292
+s2mfRes 499494 2dsfs_frank_faveo_prepped.sfs 1 1  ll:  -10223.40501  p:  [ 1.952  1.588  3.564  0.503  0.463]  t:  2749.31240599
+s2mfRes 823122 2dsfs_frank_faveo_prepped.sfs 1 1  ll:  -10300.6307746  p:  [  4.444   3.959  12.98    0.256   0.167]  t:  1113.91080997
+s2mfRes 273967 2dsfs_frank_faveo_prepped.sfs 1 1  ll:  -10233.2500757  p:  [ 2.056  1.617  3.799  0.473  0.463]  t:  2658.58693153
+s2mfRes 293325 2dsfs_frank_faveo_prepped.sfs 1 1  ll:  -10266.4746505  p:  [ 2.345  1.989  5.42   0.478  0.339]  t:  2197.08177912
+s2mfRes 843052 2dsfs_frank_faveo_prepped.sfs 1 1  ll:  -10305.2455836  p:  [ 1.962  1.814  4.505  0.612  0.352]  t:  2490.22405582
+s2mfRes 95531 2dsfs_frank_faveo_prepped.sfs 1 1  ll:  -10180.11566  p:  [ 1.308  0.952  1.046  0.676  0.712]  t:  4522.36619954
+s2mfRes 732133 2dsfs_frank_faveo_prepped.sfs 1 1  ll:  -10177.5572144  p:  [ 1.711  1.354  2.44   0.568  0.551]  t:  3255.11007121
+s2mfRes 914952 2dsfs_frank_faveo_prepped.sfs 1 1  ll:  -10137.1075295  p:  [ 1.57   1.231  1.655  0.604  0.581]  t:  3698.69837493
+s2mfRes 267858 2dsfs_frank_faveo_prepped.sfs 1 1  ll:  -10308.4394642  p:  [ 2.196  2.098  5.761  0.449  0.308]  t:  2145.65099827
+s2mfRes 389548 2dsfs_frank_faveo_prepped.sfs 1 1  ll:  -10305.2585227  p:  [ 1.949  1.802  4.464  0.617  0.354]  t:  2506.16329636
+s2mfRes 913524 2dsfs_frank_faveo_prepped.sfs 1 1  ll:  -10180.1180022  p:  [ 1.307  0.952  0.985  0.677  0.712]  t:  4524.13904538
+s2mfRes 660893 2dsfs_frank_faveo_prepped.sfs 1 1  ll:  -10155.8276655  p:  [ 1.51   1.247  1.813  0.695  0.546]  t:  3640.36282675
+s2mfRes 760253 2dsfs_frank_faveo_prepped.sfs 1 1  ll:  -10284.1117263  p:  [ 2.353  2.118  5.771  0.493  0.308]  t:  2104.79475677
+s2mfRes 846558 2dsfs_frank_faveo_prepped.sfs 1 1  ll:  -10193.7734176  p:  [ 1.541  1.323  2.271  0.724  0.503]  t:  3419.9345048
+s2mfRes 920069 2dsfs_frank_faveo_prepped.sfs 1 1  ll:  -10157.7081716  p:  [ 1.533  1.275  1.967  0.692  0.533]  t:  3555.93473391
+s2mfRes 432463 2dsfs_frank_faveo_prepped.sfs 1 1  ll:  -10194.6936107  p:  [ 1.352  1.1    1.469  0.78   0.611]  t:  4068.24866796
+s2mfRes 919972 2dsfs_frank_faveo_prepped.sfs 1 1  ll:  -10155.8311322  p:  [ 1.509  1.247  1.811  0.695  0.546]  t:  3642.46683589
+s2mfRes 522567 2dsfs_frank_faveo_prepped.sfs 1 1  ll:  -10220.4576071  p:  [ 1.455  1.067  1.612  0.632  0.718]  t:  3983.1996753
+s2mfRes 454265 2dsfs_frank_faveo_prepped.sfs 1 1  ll:  -10275.0441548  p:  [ 2.227  1.841  4.844  0.537  0.368]  t:  2364.12753329
+s2mfRes 417755 2dsfs_frank_faveo_prepped.sfs 1 1  ll:  -10263.3973142  p:  [ 2.082  1.85   4.603  0.551  0.355]  t:  2410.25940233
+s2mfRes 446487 2dsfs_frank_faveo_prepped.sfs 1 1  ll:  -10393.9169627  p:  [ 1.533  1.185  0.91   0.557  0.557]  t:  4041.51319445
+s2mfRes 895546 2dsfs_frank_faveo_prepped.sfs 1 1  ll:  -10155.830996  p:  [ 1.509  1.247  1.811  0.695  0.546]  t:  3642.40873159
+
+
+IM2:
+IM2f 526637 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02662224  p:  [ 0.565  0.189  1.973  1.31   0.66   0.61   0.826]  t:  5099.85403244
+IM2f 490628 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.03839653  p:  [ 0.565  0.189  1.976  1.308  0.66   0.61   0.826]  t:  5099.85301102
+IM2f 695853 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02661948  p:  [ 0.565  0.189  1.973  1.31   0.66   0.61   0.826]  t:  5099.85242025
+IM2f 965036 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02662225  p:  [ 0.565  0.189  1.973  1.31   0.66   0.61   0.826]  t:  5099.85402828
+IM2f 327456 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02662919  p:  [ 0.565  0.189  1.973  1.31   0.66   0.61   0.826]  t:  5099.83326568
+IM2f 865786 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.0265538  p:  [ 0.565  0.189  1.973  1.31   0.66   0.61   0.826]  t:  5099.90166958
+IM2f 367602 2dsfs_frank_faveo_prepped.sfs  ll:  -9502.94342282  p:  [ 0.318  0.087  1.604  1.173  2.224  0.859  0.85 ]  t:  4768.684404
+IM2f 192544 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02662757  p:  [ 0.565  0.189  1.973  1.31   0.66   0.61   0.826]  t:  5099.87266187
+IM2f 496950 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02612976  p:  [ 0.566  0.189  1.972  1.31   0.66   0.61   0.826]  t:  5098.99808141
+IM2f 873376 2dsfs_frank_faveo_prepped.sfs  ll:  -9501.52740308  p:  [ 0.269  0.062  1.531  1.111  2.347  0.886  0.904]  t:  5002.0667239
+IM2f 130888 2dsfs_frank_faveo_prepped.sfs  ll:  -9300.22460769  p:  [ 0.533  0.185  2.299  1.285  0.776  0.618  0.87 ]  t:  4928.75242998
+IM2f 298669 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02661178  p:  [ 0.565  0.189  1.973  1.31   0.66   0.61   0.826]  t:  5099.85393699
+IM2f 926274 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02653388  p:  [ 0.565  0.189  1.973  1.31   0.66   0.61   0.826]  t:  5099.8478704
+IM2f 979779 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02652385  p:  [ 0.565  0.189  1.973  1.31   0.66   0.61   0.826]  t:  5099.72606788
+IM2f 925533 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.0264987  p:  [ 0.565  0.189  1.972  1.31   0.66   0.61   0.826]  t:  5099.38806919
+IM2f 174433 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02662124  p:  [ 0.565  0.189  1.973  1.31   0.66   0.61   0.826]  t:  5099.85388067
+IM2f 363486 2dsfs_frank_faveo_prepped.sfs  ll:  -9499.93753213  p:  [ 0.305  0.083  1.583  1.154  2.233  0.872  0.86 ]  t:  4824.33022161
+IM2f 821827 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02658024  p:  [ 0.565  0.189  1.973  1.31   0.66   0.61   0.826]  t:  5099.8393546
+IM2f 810235 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02662224  p:  [ 0.565  0.189  1.973  1.31   0.66   0.61   0.826]  t:  5099.85402459
+IM2f 437236 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02662249  p:  [ 0.565  0.189  1.973  1.31   0.66   0.61   0.826]  t:  5099.89926319
+IM2f 818172 2dsfs_frank_faveo_prepped.sfs  ll:  -9501.64108319  p:  [ 0.246  0.063  1.479  1.08   2.244  0.946  0.918]  t:  5163.80697929
+IM2f 570188 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02640362  p:  [ 0.565  0.189  1.973  1.31   0.66   0.61   0.826]  t:  5099.65080338
+IM2f 245628 2dsfs_frank_faveo_prepped.sfs  ll:  -11396.5073653  p:  [ 0.858  0.657  2.704  1.026  3.22   1.049  0.555]  t:  3567.19180566
+IM2f 268996 2dsfs_frank_faveo_prepped.sfs  ll:  -9500.60482761  p:  [ 0.275  0.075  1.539  1.126  2.266  0.904  0.875]  t:  4946.67100639
+IM2f 262853 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02658566  p:  [ 0.565  0.189  1.973  1.31   0.66   0.61   0.826]  t:  5099.80335423
+IM2f 713739 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.0266132  p:  [ 0.565  0.189  1.973  1.31   0.66   0.61   0.826]  t:  5099.83302581
+IM2f 514297 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02659665  p:  [ 0.565  0.189  1.973  1.31   0.66   0.61   0.826]  t:  5099.8510459
+IM2f 299666 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02660592  p:  [ 0.565  0.189  1.973  1.31   0.66   0.61   0.826]  t:  5099.84295152
+IM2f 295950 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02608018  p:  [ 0.566  0.189  1.972  1.31   0.66   0.61   0.825]  t:  5098.61947189
+IM2f 652858 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02660313  p:  [ 0.565  0.189  1.973  1.31   0.66   0.61   0.826]  t:  5099.85984992
+IM2f 880564 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02635562  p:  [ 0.565  0.189  1.973  1.31   0.66   0.61   0.825]  t:  5099.45960287
+IM2f 420380 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02635412  p:  [ 0.565  0.189  1.973  1.31   0.66   0.61   0.826]  t:  5099.56137909
+IM2f 5190 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02662174  p:  [ 0.565  0.189  1.973  1.31   0.66   0.61   0.826]  t:  5099.85358658
+IM2f 258553 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02660673  p:  [ 0.565  0.189  1.973  1.31   0.66   0.61   0.826]  t:  5099.84951635
+IM2f 967086 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02642273  p:  [ 0.565  0.189  1.973  1.31   0.66   0.61   0.826]  t:  5099.47192083
+IM2f 866928 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02629294  p:  [ 0.565  0.189  1.973  1.31   0.66   0.611  0.826]  t:  5099.83320306
+IM2f 37138 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02662221  p:  [ 0.565  0.189  1.973  1.31   0.66   0.61   0.826]  t:  5099.85407685
+IM2f 776835 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02652199  p:  [ 0.565  0.189  1.973  1.31   0.66   0.61   0.826]  t:  5099.7672701
+IM2f 207714 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02586555  p:  [ 0.565  0.189  1.972  1.31   0.66   0.611  0.825]  t:  5098.89370222
+IM2f 386076 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02645763  p:  [ 0.565  0.189  1.972  1.31   0.66   0.61   0.825]  t:  5099.30218369
+IM2f 881087 2dsfs_frank_faveo_prepped.sfs  ll:  -13378.9608969  p:  [ 0.502  2.616  3.441  0.873  9.95   0.387  1.486]  t:  2720.23201056
+IM2f 164441 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02662181  p:  [ 0.565  0.189  1.973  1.31   0.66   0.61   0.826]  t:  5099.85408327
+IM2f 446928 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02646667  p:  [ 0.565  0.189  1.973  1.31   0.66   0.61   0.826]  t:  5099.69596728
+IM2f 557314 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02661962  p:  [ 0.565  0.189  1.973  1.31   0.66   0.61   0.826]  t:  5099.85305427
+IM2f 279742 2dsfs_frank_faveo_prepped.sfs  ll:  -9498.36389145  p:  [ 0.341  0.099  1.629  1.187  2.152  0.846  0.839]  t:  4703.31136598
+IM2f 782924 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02661551  p:  [ 0.565  0.189  1.973  1.31   0.66   0.61   0.826]  t:  5099.8272531
+IM2f 55283 2dsfs_frank_faveo_prepped.sfs  ll:  -9499.93371095  p:  [ 0.306  0.083  1.582  1.155  2.234  0.871  0.859]  t:  4821.08589674
+IM2f 906345 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02657562  p:  [ 0.565  0.189  1.973  1.31   0.66   0.61   0.826]  t:  5099.8836812
+IM2f 794389 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02645904  p:  [ 0.565  0.189  1.973  1.31   0.66   0.61   0.826]  t:  5099.93267751
+IM2f 569056 2dsfs_frank_faveo_prepped.sfs  ll:  -9778.91070744  p:  [ 0.062  0.282  2.542  1.297  3.027  0.793  0.602]  t:  4076.78694813
+IM2f 450242 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02661206  p:  [ 0.565  0.189  1.973  1.31   0.66   0.61   0.826]  t:  5099.85847824
+IM2f 771402 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02592136  p:  [ 0.565  0.189  1.972  1.31   0.66   0.611  0.826]  t:  5098.98442599
+IM2f 484281 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02662106  p:  [ 0.565  0.189  1.973  1.31   0.66   0.61   0.826]  t:  5099.85758056
+IM2f 912542 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02657785  p:  [ 0.565  0.189  1.972  1.31   0.66   0.61   0.826]  t:  5099.81405711
+IM2f 360279 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02662222  p:  [ 0.565  0.189  1.973  1.31   0.66   0.61   0.826]  t:  5099.85396769
+IM2f 950058 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02644692  p:  [ 0.565  0.189  1.973  1.31   0.66   0.61   0.826]  t:  5099.45812625
+IM2f 8558 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02620419  p:  [ 0.565  0.189  1.973  1.31   0.66   0.61   0.826]  t:  5099.52571731
+IM2f 336912 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02662224  p:  [ 0.565  0.189  1.973  1.31   0.66   0.61   0.826]  t:  5099.85403771
+IM2f 381529 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02662225  p:  [ 0.565  0.189  1.973  1.31   0.66   0.61   0.826]  t:  5099.85406917
+IM2f 195397 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02659477  p:  [ 0.565  0.189  1.973  1.31   0.66   0.61   0.826]  t:  5099.84137392
+IM2f 282598 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02662069  p:  [ 0.565  0.189  1.973  1.31   0.66   0.61   0.826]  t:  5099.85386777
+IM2f 961734 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02661814  p:  [ 0.565  0.189  1.973  1.31   0.66   0.61   0.826]  t:  5099.84024237
+IM2f 100843 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02661174  p:  [ 0.565  0.189  1.973  1.31   0.66   0.61   0.826]  t:  5099.84104061
+IM2f 421744 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02661785  p:  [ 0.565  0.189  1.973  1.31   0.66   0.61   0.826]  t:  5099.85191497
+IM2f 433554 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02660085  p:  [ 0.565  0.189  1.973  1.31   0.66   0.61   0.826]  t:  5099.83276121
+IM2f 648071 2dsfs_frank_faveo_prepped.sfs  ll:  -9499.93053831  p:  [ 0.306  0.083  1.583  1.156  2.234  0.871  0.859]  t:  4818.92333029
+IM2f 175563 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02662197  p:  [ 0.565  0.189  1.973  1.31   0.66   0.61   0.826]  t:  5099.85393292
+IM2f 396306 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02658555  p:  [ 0.565  0.189  1.973  1.31   0.66   0.61   0.826]  t:  5099.8243013
+IM2f 19577 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02658621  p:  [ 0.565  0.189  1.973  1.31   0.66   0.61   0.826]  t:  5099.93770068
+IM2f 719134 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02643788  p:  [ 0.565  0.189  1.973  1.31   0.66   0.61   0.826]  t:  5099.59687261
+IM2f 433707 2dsfs_frank_faveo_prepped.sfs  ll:  -9266.02658746  p:  [ 0.565  0.189  1.973  1.31   0.66   0.61   0.826]  t:  5099.52675746
+IM2f 8729 2dsfs_frank_faveo_prepped.sfs  ll:  -10746.5297363  p:  [ 0.961  0.216  0.791  1.151  9.317  1.935  0.519]  t:  4396.04872176
+IM2f 476236 2dsfs_frank_faveo_prepped.sfs  ll:  -9500.82276841  p:  [ 0.271  0.069  1.538  1.12   2.288  0.898  0.887]  t:  4970.76598593
+IM2f 403784 2dsfs_frank_faveo_prepped.sfs  ll:  -13448.4340552  p:  [  5.540e-03   2.838e-03   1.568e-02   1.076e-02   2.313e-01   2.555e+01
