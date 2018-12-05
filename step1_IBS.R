@@ -13,9 +13,12 @@ dimnames(ma)=list(samples,samples)
 hc=hclust(as.dist(ma),"ave")
 plot(hc,cex=0.6)
 
-# clustering faveolata-only samples
+# retaining faveolata-only samples
 mafa=ma[meta$faveolata,meta$faveolata]
 bamfa=bams[meta$faveolata]
+meta=meta[meta$faveolata,]
+
+# re-clustering
 hc=hclust(as.dist(mafa),"ave")
 plot(hc,cex=0.6)
 
@@ -35,6 +38,7 @@ abline(h=0.18,col="red",lty=3)
 
 # sorting samples into clonal groups; all singletons go into the same group
 cc=cutree(hc,h=0.18)
+meta$cn=cc
 tc=table(cc)
 singletons=as.numeric(names(tc)[tc==1])
 cc[cc %in% singletons]= singletons[1]
@@ -44,6 +48,7 @@ clones=labels2colors(as.numeric(as.factor(as.numeric(cc))))
 clones[clones=="white"]="khaki3"
 clones[clones=="black"]="goldenrod"
 clones[clones=="brown"]="black"
+meta$cn.color=clones
 ColorDendrogram(hclust(as.dist(mafa),"ave"), y = clones, labels = F,branchlength=0.05)
 
 # selecting one coral per clone
@@ -58,14 +63,6 @@ for (i in unique(clones)) {
 sel=bamfa %in% sel
 table(sel)
 
-# is there population structure, after clones have been removed?
-
-hc=hclust(as.dist(mafa[sel, sel]),"ave")
-plot(hc,cex=0.01)
-
-library(pheatmap)
-pheatmap(mafa[sel,sel]) # no visible clustering
-
 meta=meta[meta$faveolata,]
-save(bamfa,meta,mafa,sel,file='manzello_angsd_dec4.RData')
+save(bamfa,meta,mafa,sel,file='manzello_angsd_dec5.RData')
 
