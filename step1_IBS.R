@@ -29,7 +29,7 @@ meta=meta[meta$faveolata,]
 hc=hclust(as.dist(mafa),"ave")
 plot(hc,cex=0.6)
 
-# "artificial clones" : genotyping replicates
+# "artificial clones" (genotyping replicates)
 cl1=c("73.GACT","73.TCAC","73.TGTC")
 cl2=c("83.GACT","83.TCAC","83.TGTC")
 cl3=c("88.GACT","88.TCAC","88.TGTC")
@@ -37,14 +37,14 @@ cl4=c("91.GACT","91.TCAC","91.TGTC")
 cl5=c("79.GACT","79.TCAC","79.TGTC")
 # color artificial clones red
 art.clones=rep("black",nrow(mafa))
-art.clones[bamfa %in% c(cl1,cl2,cl3,cl4)]="red"
+art.clones[meta$fileName %in% c(cl1,cl2,cl3,cl4)]="red"
 ColorDendrogram(hclust(as.dist(mafa),"ave"), y = art.clones,branchlength=0.05)
 
 # cutoff for defining clones
-abline(h=0.18,col="red",lty=3)
+abline(h=0.15,col="red",lty=3)
 
-# sorting samples into clonal groups; all singletons go into the same group
-cc=cutree(hc,h=0.18)
+# sorting samples into clonal groups; singletons go into the same "color" group (for plotting) but different "cn" groups (for GLM modeling later)
+cc=cutree(hc,h=0.15)
 meta$cn=cc
 tc=table(cc)
 singletons=as.numeric(names(tc)[tc==1])
@@ -54,9 +54,9 @@ clones=labels2colors(as.numeric(as.factor(as.numeric(cc))))
 # changing some colors manually for better visibility
 clones[clones=="white"]="khaki3"
 clones[clones=="black"]="goldenrod"
-clones[clones=="brown"]="black"
+clones[clones=="turquoise"]="black"
 meta$cn.color=clones
-ColorDendrogram(hclust(as.dist(mafa),"ave"), y = clones, labels = F,branchlength=0.05)
+ColorDendrogram(hclust(as.dist(mafa),"ave"), y = clones, labels = F,branchlength=0.035)
 
 # selecting one coral per clone
 sel=c()
@@ -70,6 +70,8 @@ for (i in unique(clones)) {
 sel=bamfa %in% sel
 table(sel)
 
-meta=meta[meta$faveolata,]
+# writing list of bams with no clonal replicated - rerun the "ibs" ANGSD command with this one instead of 'bams' for PCoA or ADMIXTURE
+write.table(paste(bamfa[sel],".fastq.bam",sep=""),quote=F, row.names=F,col.names=F,sep="\t",file="bams_noclones")
+
 save(bamfa,meta,mafa,sel,file='manzello_angsd_dec5.RData')
 

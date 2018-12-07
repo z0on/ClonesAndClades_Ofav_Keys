@@ -77,7 +77,7 @@ cor.test(me6$lfz,asin(sqrt(me6$fracD)))
       # cor 
 # 0.5227821 
 
-plot(me6$lfz~asin(sqrt(me6$fracD)))
+plot(me6$lfz~asin(sqrt(me6$fracD)),pch=16,col=rgb(0,0,0,alpha=0.3),xlab="fraction of Durusdinium",ylab="log (zoox reads)")
 
 # --------------------- Plotting bleaching bar chart
 
