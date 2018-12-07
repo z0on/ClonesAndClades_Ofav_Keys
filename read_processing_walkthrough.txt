@@ -181,28 +181,25 @@ zcat ibs05.mafs.gz | wc -l
 
 # scp ibs05.ibsMat and bams to laptop, use step1_IBS.R to analyze
 
-# ---------- PCoA
+# ---------- PCoA, ADMIXTURE
 
-# this is not part of this analysis, refer to 2bRAD_README.txt for walkthrough.
-# one note, however: if you want to do PCoA based on IBS data, you must rerun the IBS analysis as above but on a collection of bam files that do not include clonal repeats.
-
-
-#----------- ADMIXTURE 
 # note: this analysis must use bams without clonal repeats, list them in bams_noclones
+# (script step1_IBS.R will produce such list)
 
- re-running the same after removing clones (make sure to set FILTERS and TODO variables as above) 
-FILTERS="-uniqueOnly 1 -remove_bads 1 -minMapQ 20 -minQ 25 -dosnpstat 1 -doHWE 1 -sb_pval 1e-5 -hetbias_pval 1e-5 -skipTriallelic 1 -minInd 100 -snp_pval 1e-5 -minMaf 0.05"
+# re-running the same after removing clones (make sure to set FILTERS and TODO variables as above except minInd - lower that one to ~80% of number of bams_noclones) 
+FILTERS="-uniqueOnly 1 -remove_bads 1 -minMapQ 20 -minQ 25 -dosnpstat 1 -doHWE 1 -sb_pval 1e-5 -hetbias_pval 1e-5 -skipTriallelic 1 -minInd 80 -snp_pval 1e-5 -minMaf 0.05"
 TODO="-doMajorMinor 1 -doMaf 1 -doCounts 1 -makeMatrix 1 -doIBS 1 -doCov 1 -doGeno 8 -doVcf 1 -doPost 1 -doGlf 2"
 angsd -b bams_noclones -GL 1 $FILTERS $TODO -P 1 -out ofav_nc
 
 # NgsAdmix for K from 2 to 6
 for K in `seq 2 6` ; 
 do 
-NGSadmix -likes mc1.beagle.gz -K $K -P 10 -o mc_k${K};
+NGSadmix -likes ofav_nc.beagle.gz -K $K -P 10 -o of_k${K};
 done
 
 # you will need a tab-delimited file called inds2pops (included): the columns are:
 [bam file name]	[population it corresponds to]
 
-# scp *.qopt to laptop; use admixturePlotting_v4.R and mcav_ibs.R to plot results
+# scp *.qopt to laptop; use admixturePlotting_v4.R to plot results
 
+# for PCoA, use the newly generated ofav_nc.ibsMat and script angsd_ibs_pcs.R from the 2bRAD_denovo repo.
