@@ -1,8 +1,15 @@
 library(WGCNA) # for coloring clonal groups
 library(sparcl) # for ColorDendrogram
 
-# setwd('~/Dropbox/Documents/manzello/angsd')
 ll=load('manzello_metadata_dec4.RData')
+
+# reading list of bam files = order of samples in IBS matrix
+bams=read.table("bams",header=F)[,1]
+bams=sub("\\.fastq.*","",bams,perl=T)
+
+# aligning metadata with bams list
+row.names(meta)=meta$Run
+meta=meta[bams,]
 
 # reading IBS matrix based on SNPs with allele frequency >= 0.05:
 ma = as.matrix(read.table("ibs05.ibsMat"))
