@@ -120,8 +120,6 @@ ls *ofav.sam > sams
 cat sams | perl -pe 's/(\S+)\.ofav\.sam/samtools import \$GENOME_FASTA $1\.ofav\.sam $1\.unsorted\.bam && samtools sort -o $1\.sorted\.bam $1\.unsorted\.bam && samtools index $1\.sorted.bam $1\.bam.bai && mv $1\.sorted.bam $1\.bam/' >s2b
 
 # execute all commands in s2b file
-launcher_creator.py -j s2b -n s2b -q normal -t 1:00:00 -a tagmap -e matz@utexas.edu -w 12
-sbatch s2b.slurm
 
 rm *sorted*
 ls *bt2.bam > bams
@@ -177,10 +175,6 @@ FILTERS="-uniqueOnly 1 -remove_bads 1 -minMapQ 20 -minQ 25 -dosnpstat 1 -doHWE 1
 TODO="-doMajorMinor 1 -doMaf 1 -doCounts 1 -makeMatrix 1 -doIBS 1 -doCov 1 -doGeno 8 -doVcf 1 -doPost 1 -doGlf 2"
 
 angsd -b bams -GL 1 $FILTERS $TODO -P 1 -out ibs05
-
-" > of0
-launcher_creator.py -j mca0 -n mca0 -t 1:10:00 -e matz@utexas.edu -w 1 -a tagmap -q normal
-sbatch of0.slurm
 
 # how many SNPs?
 zcat ibs05.mafs.gz | wc -l
