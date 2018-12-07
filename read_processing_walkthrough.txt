@@ -1,77 +1,28 @@
-Bams and genome reference is here:
-
-#-----------
-
-From Prada:
-
-Misha- You can get the updated annotated genome here:
-
+O.faveolata genome reference (from Carlos Prada, pradac@si.edu, http://www.carlosprada.org):
 https://www.ncbi.nlm.nih.gov/Traces/wgs/?val=MZGG01#contigs
 ftp://ftp.ncbi.nlm.nih.gov/sra/wgs_aux/MZ/GG/MZGG01/MZGG01.1.fsa_nt.gz
 
-If you need the annotation see:
+annotation :
 https://www.ncbi.nlm.nih.gov/genome/annotation_euk/Orbicella_faveolata/100/
- 
-You can download the annotation from:
+ You can download the annotation from:
 ftp://ftp.ncbi.nih.gov/genomes/Orbicella_faveolata
 (see the GFF directory in particular)
- 
-You can view individual genes in the Gene resource. Here is the list of genes:
-https://www.ncbi.nlm.nih.gov/gene/?term=txid48498[Organism:noexp]
- 
-And Blast against it with this page:
-https://www.ncbi.nlm.nih.gov/genome/seq/BlastGen/BlastGen.cgi?taxid=48498
- 
-I hope it helps and feel free to contact me if you need further info. Use the Current Biology to cite it, we are currently doing another paper but still not fully done.
 
-Best,
-Carlos
+# installing 2bRAD scripts (assuming scripts live in ~/bin) :
+cd ~/bin 
+# cloning github repositories
+git clone https://github.com/z0on/2bRAD_denovo.git
+mv 2bRAD_denovo/* . 
+rm -rf 2bRAD_denovo
 
+# -----------------------
 
-Carlos Prada
-Smithsonian Tropical Research Institute Tupper Fellow
-9100 Panama City PL
-Washington, DC 20521
-[P](+1) 202-633-4700 ext 28833
-pradac@si.edu
-http://www.carlosprada.org
-#----------------------------
-#### replace my email matz@utexas.edu with yours throughout the text!
+# to get reads from NCBI SRA database, first install sra-toolkit: https://trace.ncbi.nlm.nih.gov/Traces/sra/sra.cgi?view=software 
 
-# making launcher_creator.py work:
-nano ~/.bashrc
-
-# section 1: add this line
-module load python
-# section 2:
-export PATH=/corral-repl/utexas/BioITeam/bin:$PATH
-# save and exit
-mv ~/bin/launcher_creator.py ~/bin/launcher_creator.p
-
-# re-login, try running launcher_creator.py
-
-#--------------
-# Orbicella faveolata population genomics project:
-#location of zipped files: cmonstr@ranch.tacc.utexas.edu:~/manzello2016/
-#password - ask Misha
-
-# multi-file un-packing (gz: gzip, tgz: tar)
-ls *.gz | perl -pe 's/(\S+)/gunzip $1/' >gunz
-ls *.tgz | perl -pe 's/(\S+)/tar vxf $1/' >tars
-launcher_creator.py -j tars -n tars -t 0:30:00 -a mega2014 -e matz@utexas.edu -q normal 
-launcher_creator.py -j gunz -n gunz -t 0:30:00 -a mega2014 -e matz@utexas.edu -q normal 
-sbatch tars.slurm
-sbatch gunz.slurm
-
-
-echo "ngs_concat.pl FLK 'FLK-(\d+)_'" >cc
-launcher_creator.py -j cc -n cc -t 0:30:00 -a mega2014 -e matz@utexas.edu 
-sbatch cc.slurm
-
+prefetch --option-file SRR_Acc_List.txt
 
 # When trimming reads, use 2bRAD_trim_launch_dedup.pl instead of 2bRAD_trim_launch.pl
 # also, note additional argument adaptor="AGATC?" - this takes care of the fact that L0001 reads are 1-base truncated
-# (AGATC? in perl speak mean it could be AGATC or AGAT)
 2bRAD_trim_launch_dedup.pl fq sampleID=1 adaptor="AGATC?"> trims
 launcher_creator.py -j trims -n trims -t 0:30:00 -w 12 -a mega2014 -e matz@utexas.edu
 sbatch trims.slurm
