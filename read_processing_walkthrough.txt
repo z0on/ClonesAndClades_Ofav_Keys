@@ -202,4 +202,4 @@ done
 
 # scp *.qopt to laptop; use admixturePlotting_v4.R to plot results
 
-# for PCoA, use the newly generated ofav_nc.ibsMat and script angsd_ibs_pcs.R from the 2bRAD_denovo repo.
+# for PCoA, use the newly generated ofav_nc.ibsMat and script angsd_ibs_pcs.R 
