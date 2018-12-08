@@ -63,8 +63,7 @@ nano .bashrc
 prefetch --option-file SRR_Acc_List.txt
 for S in `cat SRR_Acc_List.txt`; do fasterq-dump $S; done
 
-# this will generate fastq files with their NCBI SRR* names. Correspondence of these names with sample names in the original study are in manzello_sraRun2sample.csv
-
+# this will generate fastq files with their NCBI SRR* names. 
 # the files contain trimmed and filtered 2bRAD reads, ready for mapping.
 
 #-------------------
@@ -79,7 +78,7 @@ mv MZGG01.1.fsa_nt ofavPrada.fasta
 unzip symABCD.fasta.zip
 cat ofavPrada.fasta symABCD.fasta > ofavPrada_symABCD.fasta
 
-# setting up  shortcuts to genome files for ease of coding (needs to be done upon every new login!) 
+# setting up  shortcuts to genome files for ease of coding 
 GENOME_FASTA=ofavPrada_symABCD.fasta  
 GENOME_DICT=ofavPrada_symABCD.dict 
 
@@ -94,6 +93,7 @@ GENOME_FASTA=ofavPrada_symABCD.fasta
 2bRAD_bowtie2_launch.pl '\.fastq$' $GENOME_FASTA > bt2
 # execute all commands in file bt2 (recommended: use LAUNCHER module if you are on a cluster: https://github.com/TACC/launcher )
 
+# making a list of sam files
 ls *.bt2.sam > sams
 cat sams | wc -l  
 # should be 202 
@@ -103,7 +103,8 @@ cat sams | wc -l
 
 zooxType.pl host="MZGG01000005.1" >zooxCounts.txt
 
-#------------------ extracting O.fav alignments
+#------------------ extracting O.fav read alignments 
+# (rewriting sam files omitting mappings to chr11-chr14 )
 
 for S in `ls *.bt2.sam`;
 do
@@ -121,6 +122,7 @@ cat sams | perl -pe 's/(\S+)\.ofav\.sam/samtools import \$GENOME_FASTA $1\.ofav\
 
 # execute all commands in s2b file
 
+# cleaning up, listing bam files
 rm *sorted*
 ls *fastq.bam > bams
 cat bams | wc -l  
@@ -128,9 +130,6 @@ cat bams | wc -l
 
 
 #----------- assessing base qualities and coverage depth
-
-# listing files for ANGSD to work on:
-ls *.bam > bams
 
 # angsd settings:
 # -minMapQ 20 : only highly unique mappings (prob of erroneous mapping = 1%)
@@ -152,8 +151,7 @@ Rscript ~/bin/plotQC.R dd > qranks
 cat qranks
 
 # scp dd.pdf to laptop to view more details. 
-
-# use nano to manually remove poorly covered sample(s) from bams
+# use nano to manually remove poorly covered sample(s) from bams (if any)
 
 
 # ----- IBS with ANGSD
@@ -181,12 +179,13 @@ zcat ibs05.mafs.gz | wc -l
 
 # scp ibs05.ibsMat and bams to laptop, use step1_IBS.R to analyze
 
+
 # ---------- PCoA, ADMIXTURE
 
-# note: this analysis must use bams without clonal repeats, list them in bams_noclones
-# (script step1_IBS.R will produce such list)
+# note: this analysis must use bams *without clonal repeats*, list them in bams_noclones
+# (it is included in the repo; script step1_IBS.R will produce it)
 
-# re-running the same after removing clones (make sure to set FILTERS and TODO variables as above except minInd - lower that one to ~80% of number of bams_noclones) 
+# re-running ANGSD after removing clones (make sure to set FILTERS and TODO variables as above except minInd: lower that one to ~80% of number of bams_noclones) 
 FILTERS="-uniqueOnly 1 -remove_bads 1 -minMapQ 20 -minQ 25 -dosnpstat 1 -doHWE 1 -sb_pval 1e-5 -hetbias_pval 1e-5 -skipTriallelic 1 -minInd 80 -snp_pval 1e-5 -minMaf 0.05"
 TODO="-doMajorMinor 1 -doMaf 1 -doCounts 1 -makeMatrix 1 -doIBS 1 -doCov 1 -doGeno 8 -doVcf 1 -doPost 1 -doGlf 2"
 angsd -b bams_noclones -GL 1 $FILTERS $TODO -P 1 -out ofav_nc
@@ -202,4 +201,4 @@ done
 
 # scp *.qopt to laptop; use admixturePlotting_v4.R to plot results
 
-# for PCoA, use the newly generated ofav_nc.ibsMat and script angsd_ibs_pcs.R 
+# for PCoA, use the newly generated ofav_nc.ibsMat and script angsd_ibs_pca.R 
