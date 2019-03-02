@@ -5,21 +5,25 @@ my $usage="
 zooxType2.pl:
 
 Calculates relative representations of zooxanthellae clades (A,B,C,D)
-using SAM files with RAD reads mapped to combined reference in which
-host: chr1-chr10 (only matches to chromosome 1 will be counted)
+using SAM files with reads mapped to combined reference in which concatenated
+symbiont genomes or transcriptomes are represented as single chromosome each
+By default:
 A: chr11
 B: chr12
 C: chr13
 D: chr14
+If you want to use different chr range, specify it using argument \'symgenomes\'
 
 Calculates number of high-quality (= high uniqueness) mappings a proxy of relative 
 clade abundance in each SAM file. 
 
 arguments and defaults:
 
-    ext=sam : extension of SAM files
-    minq=40 : minimum mapping quality
-host=\"chr1\" : name of host contig to use for calculating zoox prevalence
+         ext=sam : extension of SAM files
+         minq=40 : minimum mapping quality
+    host=\"chr1\": name of host contig to use for calculating zoox prevalence
+symgenomes=11-14 : range of \'chr\' numbers containing concatenated symbiont references
+                   in the order A, B, C, D
 
 output: 
 
@@ -36,6 +40,13 @@ my $minq=40;
 if (" @ARGV "=~/minq=(\d+)/) { $minq=$1;}
 my $host="chr1";
 if (" @ARGV "=~/host=(\S+)/) { $host=$1;}
+my $syms="11-14";
+if (" @ARGV "=~/symgenomes=(\d+-\d+)/) { $syms=$1;}
+my @sg=();
+(my $s1, my $s2)=split(/-/,$syms);
+for (my $i=0;$i<=$s2-$s1;$i++) {
+	$sg[$i]="chr".($s1+$i);
+}
 
 opendir THIS, ".";
 my @files=grep/\.$ext$/, readdir THIS;
@@ -82,7 +93,7 @@ foreach my $file (@files){
                                 $sH++;
                         }
                 }
-		elsif ($_=~/\tchr11\t(\d+)\t(\d+)/) {
+		elsif ($_=~/\t$sg[0]\t(\d+)\t(\d+)/) {
 			$qual=$2;
 			$site=$1;
 			next if ($qual<$minq);
@@ -93,7 +104,7 @@ foreach my $file (@files){
 				$sA++;
 			}
 		}
-		elsif ($_=~/\tchr12\t(\d+)\t(\d+)/) {
+		elsif ($_=~/\t$sg[1]\t(\d+)\t(\d+)/) {
 			$qual=$2;
 			$site=$1;
 			next if ($qual<$minq);
@@ -103,7 +114,7 @@ foreach my $file (@files){
 				$sB++;
 			}
 		}
-		elsif ($_=~/\tchr13\t(\d+)\t(\d+)/) {
+		elsif ($_=~/\t$sg[2]\t(\d+)\t(\d+)/) {
 			$qual=$2;
 			$site=$1;
 			next if ($qual<$minq);
@@ -113,7 +124,7 @@ foreach my $file (@files){
 				$sC++;
 			}
 		}
-		elsif ($_=~/\tchr14\t(\d+)\t(\d+)/) {
+		elsif ($_=~/\t$sg[3]\t(\d+)\t(\d+)/) {
 			$qual=$2;
 			$site=$1;
 			next if ($qual<$minq);
