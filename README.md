@@ -5,7 +5,7 @@ This is a collection of R scripts and datasets to accompany the paper Manzello e
 
 R scripts have comments in them to explain what is going on.
 
-
+ * **read_processing_walkthrough** : pipeline for processing reads (includes ANGSD IBS analysis and calling of zooxanthellae abundances)
  * **step1_IBS.R** : identity-by-state (IBS) analysis to identify clonal groups of corals.
  * **step2_clonesclades.R** : main analysis and plots.
- * **read_processing_walkthrough** : pipeline for processing reads (includes ANGSD IBS analysis and calling of zooxanthellae abundances)
+ 
